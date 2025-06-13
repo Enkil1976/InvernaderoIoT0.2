@@ -339,7 +339,7 @@ export class ApiService {
       case 'history':
         return { data: mockTable.history };
       case 'stats':
-        return { stats: mockTable.stats };
+        return { stats: mockTable.stats || [] };
       default:
         return null;
     }
@@ -355,45 +355,78 @@ export class ApiService {
   }
 
   static async getChartData(table: string) {
+    console.log(`[getChartData] Fetching chart data for table: ${table}`);
     const isAvailable = await this.checkApiAvailability();
+  
     if (!isAvailable) {
-      console.info(`Using mock data for ${table} charts (API unavailable)`);
+      console.warn(`[getChartData] API not available, using mock data for ${table} charts`);
       const mockData = this.getMockDataForEndpoint(currentConfig.endpoints.chart, table);
-      return mockData?.data || null;
+      console.log(`[getChartData] Mock data for ${table}:`, mockData);
+      return mockData?.data || [];
     }
-    
-    const response = await this.fetchWithErrorHandling<any>(currentConfig.endpoints.chart, table);
-    return response?.data || null;
+  
+    try {
+      console.log(`[getChartData] Making API request to ${currentConfig.endpoints.chart}/${table}`);
+      const response = await this.fetchWithErrorHandling<any>(currentConfig.endpoints.chart, table);
+      console.log(`[getChartData] API response for ${table}:`, response);
+  
+      return Array.isArray(response) ? response : (response?.data || []);
+    } catch (error) {
+      console.error(`[getChartData] Error fetching chart data for ${table}:`, error);
+      const mockData = this.getMockDataForEndpoint(currentConfig.endpoints.chart, table);
+      return mockData?.data || [];
+    }
   }
 
+
   static async getHistoryData(table: string) {
+    console.log(`[getHistoryData] Fetching history data for table: ${table}`);
     const isAvailable = await this.checkApiAvailability();
+    
     if (!isAvailable) {
-      console.info(`Using mock data for ${table} history (API unavailable)`);
+      console.warn(`[getHistoryData] API not available, using mock data for ${table} history`);
       const mockData = this.getMockDataForEndpoint(currentConfig.endpoints.history, table);
-      return mockData?.data || null;
+      console.log(`[getHistoryData] Mock data:`, mockData);
+      return mockData?.data || [];
     }
     
-    const response = await this.fetchWithErrorHandling<any>(currentConfig.endpoints.history, table);
-    return response?.data || null;
+    try {
+      console.log(`[getHistoryData] Making API request to ${currentConfig.endpoints.history}/${table}`);
+      const response = await this.fetchWithErrorHandling<any>(currentConfig.endpoints.history, table);
+      console.log(`[getHistoryData] API response:`, response);
+      return Array.isArray(response) ? response : (response?.data || []);
+    } catch (error) {
+      console.error(`[getHistoryData] Error fetching history data for ${table}:`, error);
+      const mockData = this.getMockDataForEndpoint(currentConfig.endpoints.history, table);
+      return mockData?.data || [];
+    }
   }
 
   static async getStatsData(table: string) {
+    console.log(`[getStatsData] Fetching stats data for table: ${table}`);
     const isAvailable = await this.checkApiAvailability();
+    
     if (!isAvailable) {
-      console.info(`Using mock data for ${table} stats (API unavailable)`);
+      console.warn(`[getStatsData] API not available, using mock data for ${table} stats`);
       const mockData = this.getMockDataForEndpoint(currentConfig.endpoints.stats, table);
-      return mockData?.stats || null;
+      console.log(`[getStatsData] Mock data:`, mockData);
+      return mockData?.stats || [];
     }
     
-    const response = await this.fetchWithErrorHandling<any>(currentConfig.endpoints.stats, table);
-    return response?.stats || null;
+    try {
+      console.log(`[getStatsData] Making API request to ${currentConfig.endpoints.stats}/${table}`);
+      const response = await this.fetchWithErrorHandling<any>(currentConfig.endpoints.stats, table);
+      console.log(`[getStatsData] API response:`, response);
+      return Array.isArray(response) ? response : (response?.stats || []);
+    } catch (error) {
+      console.error(`[getStatsData] Error fetching stats data for ${table}:`, error);
+      const mockData = this.getMockDataForEndpoint(currentConfig.endpoints.stats, table);
+      return mockData?.stats || [];
+    }
   }
 
-  static getApiStatus(): boolean {
-    return this.isApiAvailable;
+  // Inicializar configuración al cargar
+  static {
+    this.updateConfig({});
   }
 }
-
-// Inicializar configuración al cargar
-ApiService.updateConfig({});

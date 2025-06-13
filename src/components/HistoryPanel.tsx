@@ -19,17 +19,24 @@ export function HistoryPanel() {
 
   useEffect(() => {
     const fetchHistoryData = async () => {
-      if (!activeTable) return;
+      if (!activeTable) {
+        console.log('[HistoryPanel] No active table selected');
+        return;
+      }
       
+      console.log(`[HistoryPanel] Fetching history data for table: ${activeTable}`);
       setLoading(true);
       try {
         const result = await ApiService.getHistoryData(activeTable);
-        setData(result || []);
+        console.log(`[HistoryPanel] Received data for ${activeTable}:`, result);
+        setData(Array.isArray(result) ? result : []);
         setCurrentPage(1);
       } catch (error) {
-        console.error('Error fetching history data:', error);
+        console.error('[HistoryPanel] Error fetching history data:', error);
+        setData([]);
+      } finally {
+        setLoading(false);
       }
-      setLoading(false);
     };
 
     fetchHistoryData();

@@ -58,7 +58,10 @@ export function StatsPanel() {
   const config = ApiService.getConfig();
   const currentTable = config.tables.find(t => t.name === activeTable);
   const statsFields = currentTable ? ApiService.getFieldsForDisplay(activeTable, 'Stats') : [];
-  const currentStats = statsData[activeTable] || [];
+  const currentStats = Array.isArray(statsData[activeTable]) ? statsData[activeTable] : [];
+  console.log('Current active table:', activeTable);
+  console.log('Stats data for table:', statsData[activeTable]);
+  console.log('Processed currentStats:', currentStats);
 
   // Generate dynamic column keys based on configured fields
   const getStatsColumns = () => {
@@ -78,6 +81,11 @@ export function StatsPanel() {
   };
 
   const statsColumns = getStatsColumns();
+
+  console.log('Current table:', activeTable);
+  console.log('Current stats:', currentStats);
+  console.log('Stats fields:', statsFields);
+  console.log('Stats columns:', statsColumns);
 
   return (
     <div className="space-y-4 sm:space-y-6">
@@ -130,29 +138,39 @@ export function StatsPanel() {
                 </thead>
                 <tbody className="divide-y divide-gray-200">
                   {currentStats.length > 0 ? (
-                    currentStats.map((stat, index) => (
-                      <tr key={stat.date} className={index % 2 === 0 ? 'bg-white' : 'bg-gray-50'}>
-                        <td className="px-3 sm:px-6 py-4 whitespace-nowrap text-xs sm:text-sm font-medium text-gray-900">
-                          {new Date(stat.date).toLocaleDateString('es-ES')}
-                        </td>
-                        <td className="px-3 sm:px-6 py-4 whitespace-nowrap text-xs sm:text-sm text-gray-900 hidden sm:table-cell">{stat.records}</td>
-                        {statsFields.map((field) => (
-                          <React.Fragment key={field.name}>
-                            <td className="px-1 sm:px-2 py-4 whitespace-nowrap text-xs sm:text-sm text-gray-900 text-center">
-                              {stat[`avg_${field.name}`]?.toFixed(1) || '--'}
-                            </td>
-                            <td className="px-1 sm:px-2 py-4 whitespace-nowrap text-xs sm:text-sm text-blue-600 text-center">
-                              {stat[`min_${field.name}`]?.toFixed(1) || '--'}
-                            </td>
-                            <td className="px-1 sm:px-2 py-4 whitespace-nowrap text-xs sm:text-sm text-red-600 text-center">
-                              {stat[`max_${field.name}`]?.toFixed(1) || '--'}
-                            </td>
-                          </React.Fragment>
-                        ))}
-                      </tr>
-                    ))
+                    currentStats.map((stat, index) => {
+                      console.log(`Rendering stat row ${index}:`, stat);
+                      return (
+                        <tr key={stat.fecha || index} className={index % 2 === 0 ? 'bg-white' : 'bg-gray-50'}>
+                          <td className="px-3 sm:px-6 py-4 whitespace-nowrap text-xs sm:text-sm font-medium text-gray-900">
+                            {stat.fecha ? new Date(stat.fecha).toLocaleDateString('es-ES') : '--'}
+                          </td>
+                          <td className="px-3 sm:px-6 py-4 whitespace-nowrap text-xs sm:text-sm text-gray-900 hidden sm:table-cell">
+                            {stat.total || '--'}
+                          </td>
+                          {statsFields.map((field) => {
+                            const fieldData = stat[field.name];
+                            console.log(`Field ${field.name} data:`, fieldData);
+                            
+                            return (
+                              <React.Fragment key={field.name}>
+                                <td className="px-1 sm:px-2 py-4 whitespace-nowrap text-xs sm:text-sm text-gray-900 text-center">
+                                  {fieldData?.promedio !== undefined ? Number(fieldData.promedio).toFixed(1) : '--'}
+                                </td>
+                                <td className="px-1 sm:px-2 py-4 whitespace-nowrap text-xs sm:text-sm text-blue-600 text-center">
+                                  {fieldData?.minimo !== undefined ? Number(fieldData.minimo).toFixed(1) : '--'}
+                                </td>
+                                <td className="px-1 sm:px-2 py-4 whitespace-nowrap text-xs sm:text-sm text-red-600 text-center">
+                                  {fieldData?.maximo !== undefined ? Number(fieldData.maximo).toFixed(1) : '--'}
+                                </td>
+                              </React.Fragment>
+                            );
+                          })}
+                        </tr>
+                      );
+                    })
                   ) : (
-                    <tr>
+                    <tr key="no-data">
                       <td colSpan={2 + (statsFields.length * 3)} className="px-6 py-4 text-center text-gray-500 text-sm">
                         {statsFields.length === 0 
                           ? 'No hay campos configurados para mostrar estadísticas. Ve a Configuración para habilitar campos.'
@@ -169,16 +187,25 @@ export function StatsPanel() {
           {/* Gráficos de estadísticas */}
           {currentStats.length > 0 && statsFields.length > 0 && (
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
-              {statsFields.map((field) => (
+              {statsFields.map((field) => {
+                // Transform data for the chart to match the expected format
+                const chartData = currentStats.map(stat => ({
+                  ...stat,
+                  [`${field.name}_promedio`]: stat[field.name]?.promedio,
+                  [`${field.name}_minimo`]: stat[field.name]?.minimo,
+                  [`${field.name}_maximo`]: stat[field.name]?.maximo,
+                }));
+                
+                return (
                 <div key={field.name} className="bg-white p-4 sm:p-6 rounded-lg shadow-md">
                   <h3 className="text-base sm:text-lg font-semibold text-gray-800 mb-4">
                     {field.label} - Estadísticas Diarias
                   </h3>
                   <ResponsiveContainer width="100%" height={250}>
-                    <BarChart data={currentStats}>
+                    <BarChart data={chartData}>
                       <CartesianGrid strokeDasharray="3 3" />
                       <XAxis 
-                        dataKey="date" 
+                        dataKey="fecha" 
                         tickFormatter={(value) => new Date(value).toLocaleDateString('es-ES', { month: 'short', day: 'numeric' })}
                         fontSize={10}
                         tick={{ fontSize: 10 }}
@@ -188,13 +215,13 @@ export function StatsPanel() {
                         labelFormatter={(value) => new Date(value).toLocaleDateString('es-ES')}
                       />
                       <Legend />
-                      <Bar dataKey={`avg_${field.name}`} fill={field.color || '#3B82F6'} name={`Promedio ${field.unit}`} />
-                      <Bar dataKey={`min_${field.name}`} fill="#93C5FD" name={`Mínimo ${field.unit}`} />
-                      <Bar dataKey={`max_${field.name}`} fill="#1E40AF" name={`Máximo ${field.unit}`} />
+                      <Bar dataKey={`${field.name}_promedio`} fill={field.color || '#3B82F6'} name={`Promedio ${field.unit || ''}`.trim()} />
+                      <Bar dataKey={`${field.name}_minimo`} fill="#93C5FD" name={`Mínimo ${field.unit || ''}`.trim()} />
+                      <Bar dataKey={`${field.name}_maximo`} fill="#1E40AF" name={`Máximo ${field.unit || ''}`.trim()} />
                     </BarChart>
                   </ResponsiveContainer>
                 </div>
-              ))}
+              )})}
             </div>
           )}
         </>
