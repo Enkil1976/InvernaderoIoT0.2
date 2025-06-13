@@ -6,10 +6,23 @@ import { HistoryPanel } from './components/HistoryPanel';
 import { StatsPanel } from './components/StatsPanel';
 import { ConfigPanel } from './components/ConfigPanel';
 import { Menu, X } from 'lucide-react';
+import { ConfigProvider, useConfig } from './contexts/ConfigContext';
 
-function App() {
+function AppContent() {
+  const { isLoading } = useConfig();
   const [activeSection, setActiveSection] = useState('status');
   const [sidebarOpen, setSidebarOpen] = useState(false);
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center min-h-screen bg-gray-50">
+        <div className="text-center">
+          <div className="w-16 h-16 border-4 border-sky-500 border-t-transparent rounded-full animate-spin mx-auto"></div>
+          <p className="mt-4 text-gray-600">Cargando configuración...</p>
+        </div>
+      </div>
+    );
+  }
 
   const renderContent = () => {
     switch (activeSection) {
@@ -70,6 +83,14 @@ function App() {
         </div>
       </main>
     </div>
+  );
+}
+
+function App() {
+  return (
+    <ConfigProvider>
+      <AppContent />
+    </ConfigProvider>
   );
 }
 

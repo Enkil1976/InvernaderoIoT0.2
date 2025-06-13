@@ -13,10 +13,6 @@ export interface DatabaseConfig {
   supabaseUrl?: string;
   supabaseKey?: string;
   
-  // Redis
-  redisUrl: string;
-  redisPassword?: string;
-  
   // Tipo de conexión
   connectionType: 'postgresql' | 'supabase';
 }
@@ -236,24 +232,6 @@ export class DatabaseService {
     }
   }
 
-  async testRedisConnection(redisUrl: string, password?: string): Promise<{ success: boolean; error?: string }> {
-    try {
-      // Para el entorno del navegador, simularemos la prueba de conexión Redis
-      const testUrl = new URL(redisUrl);
-      if (!testUrl.hostname || !testUrl.port) {
-        return { success: false, error: 'Formato de URL Redis inválido' };
-      }
-      
-      // Simular conexión test
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      console.log('Probando conexión Redis:', { url: redisUrl, hasPassword: !!password });
-      return { success: true };
-    } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : 'Redis connection failed';
-      return { success: false, error: errorMessage };
-    }
-  }
-
   async saveSystemConfig(config: SystemConfig): Promise<{ success: boolean; error?: string; data?: SystemConfig }> {
     if (!this.isConnected) {
       return { success: false, error: 'Database not connected' };
@@ -383,8 +361,8 @@ export class DatabaseService {
     }
   }
 
-  async getSystemConfig(configId?: string): Promise<SystemConfig | null> {
-    if (!this.isConnected) return null;
+  async getSystemConfig(configId?: string): Promise<SystemConfig | undefined> {
+    if (!this.isConnected) return undefined;
 
     try {
       if (this.connectionType === 'postgresql') {
@@ -394,23 +372,23 @@ export class DatabaseService {
       }
     } catch (error) {
       console.error('Error loading system config:', error);
-      return null;
+      return undefined;
     }
   }
 
-  private async getSystemConfigPostgreSQL(configId?: string): Promise<SystemConfig | null> {
+  private async getSystemConfigPostgreSQL(configId?: string): Promise<SystemConfig | undefined> {
     // Cargar desde localStorage para la demo
     const configs = JSON.parse(localStorage.getItem('postgresql-configs') || '[]');
     
     if (configId) {
-      return configs.find((c: SystemConfig) => c.id === configId) || null;
+      return configs.find((c: SystemConfig) => c.id === configId) || undefined;
     } else {
-      return configs.length > 0 ? configs[configs.length - 1] : null;
+      return configs.length > 0 ? configs[configs.length - 1] : undefined;
     }
   }
 
-  private async getSystemConfigSupabase(configId?: string): Promise<SystemConfig | null> {
-    if (!this.supabase) return null;
+  private async getSystemConfigSupabase(configId?: string): Promise<SystemConfig | undefined> {
+    if (!this.supabase) return undefined;
 
     let query = this.supabase
       .from('system_configs')
@@ -430,7 +408,7 @@ export class DatabaseService {
 
     const { data, error } = await query.single();
 
-    if (error || !data) return null;
+    if (error || !data) return undefined;
 
     return {
       id: data.id,

@@ -1,244 +1,47 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { Settings, Save, RotateCcw, CheckCircle, AlertCircle, Plus, Trash2, Eye, Database, Wifi, Download, Upload, Server } from 'lucide-react';
 import { ApiService } from '../services/api';
-import { DatabaseService, DatabaseConfig, SystemConfig } from '../services/database';
-
-interface FieldConfig {
-  name: string;
-  label: string;
-  unit: string;
-  type: 'number' | 'string' | 'date';
-  showInKPI: boolean;
-  showInChart: boolean;
-  showInStats: boolean;
-  showInHistory: boolean;
-  range?: { min: number; max: number };
-  color?: string;
-}
-
-interface TableConfig {
-  name: string;
-  label: string;
-  fields: FieldConfig[];
-}
-
-interface EndpointConfig {
-  baseUrl: string;
-  endpoints: {
-    latest: string;
-    chart: string;
-    history: string;
-    stats: string;
-  };
-  tables: TableConfig[];
-}
-
-const DEFAULT_CONFIG: EndpointConfig = {
-  baseUrl: 'https://proyectos-iot.onrender.com',
-  endpoints: {
-    latest: '/api/latest',
-    chart: '/api/chart',
-    history: '/api/history',
-    stats: '/api/stats'
-  },
-  tables: [
-    {
-      name: 'temhum1',
-      label: 'Sensor Ambiental 1',
-      fields: [
-        {
-          name: 'temperatura',
-          label: 'Temperatura',
-          unit: '°C',
-          type: 'number',
-          showInKPI: true,
-          showInChart: true,
-          showInStats: true,
-          showInHistory: true,
-          range: { min: 18, max: 25 },
-          color: '#3B82F6'
-        },
-        {
-          name: 'humedad',
-          label: 'Humedad',
-          unit: '%',
-          type: 'number',
-          showInKPI: true,
-          showInChart: true,
-          showInStats: true,
-          showInHistory: true,
-          range: { min: 50, max: 70 },
-          color: '#10B981'
-        },
-        {
-          name: 'dew_point',
-          label: 'Punto de Rocío',
-          unit: '°C',
-          type: 'number',
-          showInKPI: true,
-          showInChart: false,
-          showInStats: false,
-          showInHistory: true,
-          color: '#06B6D4'
-        }
-      ]
-    }
-  ]
-};
+import { DatabaseService } from '../services/database';
+import { useConfig } from '../contexts/ConfigContext';
+import type { EndpointConfig, TableConfig, FieldConfig } from '../types';
 
 export function ConfigPanel() {
-  const [config, setConfig] = useState<EndpointConfig>(DEFAULT_CONFIG);
+  const {
+    config,
+    databaseConfig,
+    systemConfigs,
+    selectedConfigId,
+    configName,
+    dbConnectionStatus,
+    dbConnectionError,
+    setConfig,
+    setDatabaseConfig,
+    setSelectedConfigId,
+    setConfigName,
+    connectToDatabase,
+    saveToDatabase,
+    loadSystemConfig
+  } = useConfig();
+
   const [testResults, setTestResults] = useState<Record<string, 'success' | 'error' | 'testing' | null>>({});
   const [isSaving, setIsSaving] = useState(false);
   const [saveStatus, setSaveStatus] = useState<'success' | 'error' | null>(null);
   const [activeTab, setActiveTab] = useState<'endpoints' | 'tables' | 'database'>('endpoints');
   const [expandedTable, setExpandedTable] = useState<string | null>(null);
-  
-  // Database configuration state
-  const [databaseConfig, setDatabaseConfig] = useState<DatabaseConfig>({
-    connectionType: 'postgresql',
-    postgresHost: '',
-    postgresPort: 5432,
-    postgresDatabase: '',
-    postgresUser: '',
-    postgresPassword: '',
-    postgresSSL: false,
-    supabaseUrl: '',
-    supabaseKey: '',
-    redisUrl: '',
-    redisPassword: ''
-  });
-  const [dbConnectionStatus, setDbConnectionStatus] = useState<'disconnected' | 'connecting' | 'connected' | 'error'>('disconnected');
-  const [dbConnectionError, setDbConnectionError] = useState<string | null>(null);
-  const [systemConfigs, setSystemConfigs] = useState<SystemConfig[]>([]);
-  const [selectedConfigId, setSelectedConfigId] = useState<string | null>(null);
-  const [configName, setConfigName] = useState('');
   const [postgresTestStatus, setPostgresTestStatus] = useState<'idle' | 'testing' | 'success' | 'error'>('idle');
-  const [redisTestStatus, setRedisTestStatus] = useState<'idle' | 'testing' | 'success' | 'error'>('idle');
 
-  const dbService = DatabaseService.getInstance();
-
-  useEffect(() => {
-    // Cargar configuración guardada
-    const savedConfig = localStorage.getItem('iot-dashboard-config');
-    if (savedConfig) {
-      try {
-        const parsed = JSON.parse(savedConfig);
-        setConfig({ ...DEFAULT_CONFIG, ...parsed });
-      } catch (error) {
-        console.error('Error loading saved config:', error);
-      }
-    }
-
-    // Cargar configuración de base de datos
-    const savedDbConfig = localStorage.getItem('iot-dashboard-db-config');
-    if (savedDbConfig) {
-      try {
-        const parsed = JSON.parse(savedDbConfig);
-        setDatabaseConfig({ ...databaseConfig, ...parsed });
-        // Auto-connect if config exists
-        connectToDatabase({ ...databaseConfig, ...parsed });
-      } catch (error) {
-        console.error('Error loading saved database config:', error);
-      }
-    }
-  }, []);
-
-  const connectToDatabase = async (dbConfig: DatabaseConfig) => {
-    setDbConnectionStatus('connecting');
-    setDbConnectionError(null);
-
-    const result = await dbService.connect(dbConfig);
-    
-    if (result.success) {
-      setDbConnectionStatus('connected');
-      localStorage.setItem('iot-dashboard-db-config', JSON.stringify(dbConfig));
-      await loadSystemConfigs();
-    } else {
-      setDbConnectionStatus('error');
-      setDbConnectionError(result.error || 'Connection failed');
-    }
-  };
+  // Eliminado el useEffect ya que la carga inicial ahora se maneja en el contexto
 
   const testPostgreSQLConnection = async () => {
     setPostgresTestStatus('testing');
-    const result = await dbService.testPostgreSQLConnection(databaseConfig);
+    const result = await DatabaseService.getInstance().testPostgreSQLConnection(databaseConfig);
     setPostgresTestStatus(result.success ? 'success' : 'error');
     
     if (!result.success) {
-      setDbConnectionError(result.error || 'PostgreSQL test failed');
+      console.error(result.error || 'PostgreSQL test failed');
     }
     
     setTimeout(() => setPostgresTestStatus('idle'), 3000);
-  };
-
-  const testRedisConnection = async () => {
-    setRedisTestStatus('testing');
-    const result = await dbService.testRedisConnection(databaseConfig.redisUrl, databaseConfig.redisPassword);
-    setRedisTestStatus(result.success ? 'success' : 'error');
-    
-    if (!result.success) {
-      setDbConnectionError(result.error || 'Redis test failed');
-    }
-    
-    setTimeout(() => setRedisTestStatus('idle'), 3000);
-  };
-
-  const loadSystemConfigs = async () => {
-    const configs = await dbService.getAllSystemConfigs();
-    setSystemConfigs(configs);
-  };
-
-  const loadSystemConfig = async (configId: string) => {
-    const systemConfig = await dbService.getSystemConfig(configId);
-    if (systemConfig) {
-      setConfig({
-        baseUrl: systemConfig.baseUrl,
-        endpoints: systemConfig.endpoints,
-        tables: systemConfig.tables
-      });
-      setConfigName(systemConfig.name);
-      setSelectedConfigId(configId);
-    }
-  };
-
-  const saveToDatabase = async () => {
-    if (dbConnectionStatus !== 'connected') {
-      setSaveStatus('error');
-      return;
-    }
-
-    setIsSaving(true);
-    try {
-      const systemConfig: SystemConfig = {
-        id: selectedConfigId || undefined,
-        name: configName || 'Configuración Sin Nombre',
-        baseUrl: config.baseUrl,
-        endpoints: config.endpoints,
-        tables: config.tables,
-        databaseConfig: databaseConfig
-      };
-
-      const result = await dbService.saveSystemConfig(systemConfig);
-      
-      if (result.success && result.data) {
-        setSelectedConfigId(result.data.id!);
-        setSaveStatus('success');
-        await loadSystemConfigs();
-        
-        // Update ApiService with new config
-        ApiService.updateConfig(config);
-      } else {
-        setSaveStatus('error');
-        console.error('Save error:', result.error);
-      }
-    } catch (error) {
-      setSaveStatus('error');
-      console.error('Error saving to database:', error);
-    }
-    
-    setIsSaving(false);
-    setTimeout(() => setSaveStatus(null), 3000);
   };
 
   const handleConfigChange = (field: keyof EndpointConfig, value: any) => {
@@ -383,7 +186,35 @@ export function ConfigPanel() {
   };
 
   const resetToDefaults = () => {
-    setConfig(DEFAULT_CONFIG);
+    setConfig({
+      baseUrl: 'https://proyectos-iot.onrender.com',
+      endpoints: {
+        latest: '/api/latest',
+        chart: '/api/chart',
+        history: '/api/history',
+        stats: '/api/stats'
+      },
+      tables: [
+        {
+          name: 'temhum1',
+          label: 'Sensor Ambiental 1',
+          fields: [
+            {
+              name: 'temperatura',
+              label: 'Temperatura',
+              unit: '°C',
+              type: 'number',
+              showInKPI: true,
+              showInChart: true,
+              showInStats: true,
+              showInHistory: true,
+              range: { min: 18, max: 25 },
+              color: '#3B82F6'
+            }
+          ]
+        }
+      ]
+    });
     setTestResults({});
     setConfigName('');
     setSelectedConfigId(null);
@@ -574,7 +405,7 @@ export function ConfigPanel() {
                 <span className="ml-2">Estado de Conexión</span>
                 {dbConnectionStatus === 'connected' && (
                   <span className="ml-2 text-sm text-gray-500">
-                    ({dbService.getConnectionType()?.toUpperCase()})
+                      ({DatabaseService.getInstance().getConnectionType()?.toUpperCase()})
                   </span>
                 )}
               </h3>
@@ -776,49 +607,6 @@ export function ConfigPanel() {
               </div>
             )}
 
-            <div className="bg-white p-6 rounded-lg shadow-md">
-              <h3 className="text-lg font-semibold text-gray-800 mb-4 flex items-center">
-                <Wifi className="w-5 h-5 mr-2 text-red-600" />
-                Configuración de Redis
-              </h3>
-              
-              <div className="space-y-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    URL de Redis
-                  </label>
-                  <input
-                    type="url"
-                    value={databaseConfig.redisUrl}
-                    onChange={(e) => setDatabaseConfig(prev => ({ ...prev, redisUrl: e.target.value }))}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-sky-500 focus:border-transparent"
-                    placeholder="redis://localhost:6379"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Contraseña de Redis (opcional)
-                  </label>
-                  <input
-                    type="password"
-                    value={databaseConfig.redisPassword || ''}
-                    onChange={(e) => setDatabaseConfig(prev => ({ ...prev, redisPassword: e.target.value }))}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-sky-500 focus:border-transparent"
-                    placeholder="Contraseña opcional"
-                  />
-                </div>
-                <button
-                  onClick={testRedisConnection}
-                  disabled={!databaseConfig.redisUrl || redisTestStatus === 'testing'}
-                  className="w-full flex items-center justify-center px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors disabled:opacity-50"
-                >
-                  {getTestStatusIcon(redisTestStatus)}
-                  <span className="ml-2">
-                    {redisTestStatus === 'testing' ? 'Probando...' : 'Probar Conexión Redis'}
-                  </span>
-                </button>
-              </div>
-            </div>
           </div>
 
           {/* Saved Configurations */}
@@ -854,7 +642,7 @@ export function ConfigPanel() {
                         Cargar
                       </button>
                       <button
-                        onClick={() => dbService.deleteSystemConfig(config.id!).then(() => loadSystemConfigs())}
+                        onClick={() => DatabaseService.getInstance().deleteSystemConfig(config.id!).then(() => loadSystemConfig(config.id!))}
                         className="px-3 py-1 text-sm bg-red-100 text-red-700 rounded hover:bg-red-200 transition-colors"
                       >
                         Eliminar
