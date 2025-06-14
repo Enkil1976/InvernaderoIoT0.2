@@ -46,7 +46,7 @@ class AuthService {
 
   constructor() {
     // Usar la misma URL base que el resto de la aplicación
-    this.baseURL = 'http://localhost:4000';
+    this.baseURL = 'https://proyectos-iot.onrender.com';
     
     // Configurar interceptor para incluir token automáticamente
     axios.interceptors.request.use(
