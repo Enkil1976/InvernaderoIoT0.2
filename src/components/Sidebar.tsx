@@ -8,6 +8,7 @@ import {
   Droplets,
   Settings
 } from 'lucide-react';
+import { useAuth } from '../contexts/AuthContext';
 
 interface SidebarProps {
   activeSection: string;
@@ -25,6 +26,12 @@ const menuItems = [
 ];
 
 export function Sidebar({ activeSection, onSectionChange, isOpen, onClose }: SidebarProps) {
+  const { user } = useAuth();
+  // Solo los admin ven la opción de configuración
+  const filteredMenuItems = menuItems.filter(
+    (item) => item.id !== 'config' || user?.role === 'admin'
+  );
+
   return (
     <>
       <div className={`
@@ -45,7 +52,7 @@ export function Sidebar({ activeSection, onSectionChange, isOpen, onClose }: Sid
         </div>
         
         <nav className="mt-6 sm:mt-8">
-          {menuItems.map((item) => {
+          {filteredMenuItems.map((item) => {
             const Icon = item.icon;
             return (
               <button

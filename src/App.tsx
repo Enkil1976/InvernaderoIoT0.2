@@ -1,96 +1,41 @@
-import React, { useState } from 'react';
-import { Sidebar } from './components/Sidebar';
-import { StatusPanel } from './components/StatusPanel';
-import { ChartsPanel } from './components/ChartsPanel';
-import { HistoryPanel } from './components/HistoryPanel';
-import { StatsPanel } from './components/StatsPanel';
-import { ConfigPanel } from './components/ConfigPanel';
-import { Menu, X } from 'lucide-react';
-import { ConfigProvider, useConfig } from './contexts/ConfigContext';
-
-function AppContent() {
-  const { isLoading } = useConfig();
-  const [activeSection, setActiveSection] = useState('status');
-  const [sidebarOpen, setSidebarOpen] = useState(false);
-
-  if (isLoading) {
-    return (
-      <div className="flex items-center justify-center min-h-screen bg-gray-50">
-        <div className="text-center">
-          <div className="w-16 h-16 border-4 border-sky-500 border-t-transparent rounded-full animate-spin mx-auto"></div>
-          <p className="mt-4 text-gray-600">Cargando configuración...</p>
-        </div>
-      </div>
-    );
-  }
-
-  const renderContent = () => {
-    switch (activeSection) {
-      case 'status':
-        return <StatusPanel />;
-      case 'charts':
-        return <ChartsPanel />;
-      case 'history':
-        return <HistoryPanel />;
-      case 'stats':
-        return <StatsPanel />;
-      case 'config':
-        return <ConfigPanel />;
-      default:
-        return <StatusPanel />;
-    }
-  };
-
-  return (
-    <div className="min-h-screen bg-gray-50">
-      {/* Mobile menu button */}
-      <div className="lg:hidden fixed top-4 left-4 z-50">
-        <button
-          onClick={() => setSidebarOpen(!sidebarOpen)}
-          className="p-2 bg-white rounded-lg shadow-md hover:shadow-lg transition-shadow"
-        >
-          {sidebarOpen ? (
-            <X className="w-6 h-6 text-gray-600" />
-          ) : (
-            <Menu className="w-6 h-6 text-gray-600" />
-          )}
-        </button>
-      </div>
-
-      {/* Mobile overlay */}
-      {sidebarOpen && (
-        <div
-          className="lg:hidden fixed inset-0 bg-black bg-opacity-50 z-30"
-          onClick={() => setSidebarOpen(false)}
-        />
-      )}
-
-      <Sidebar 
-        activeSection={activeSection} 
-        onSectionChange={(section) => {
-          setActiveSection(section);
-          setSidebarOpen(false);
-        }}
-        isOpen={sidebarOpen}
-        onClose={() => setSidebarOpen(false)}
-      />
-      
-      <main className="lg:ml-64 min-h-screen">
-        <div className="p-4 sm:p-6 lg:p-8 pt-16 lg:pt-8">
-          <div className="max-w-7xl mx-auto">
-            {renderContent()}
-          </div>
-        </div>
-      </main>
-    </div>
-  );
-}
+import React from 'react';
+import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import { AuthProvider } from './contexts/AuthContext';
+import { ConfigProvider } from './contexts/ConfigContext';
+import { ProtectedRoute } from './components/auth/ProtectedRoute';
+import { LoginForm } from './components/auth/LoginForm';
+import { RegisterForm } from './components/auth/RegisterForm';
+import { Dashboard } from './components/Dashboard';
 
 function App() {
   return (
-    <ConfigProvider>
-      <AppContent />
-    </ConfigProvider>
+    <AuthProvider>
+      <ConfigProvider>
+        <Router>
+          <Routes>
+            {/* Rutas de autenticación */}
+            <Route path="/auth/login" element={<LoginForm />} />
+            <Route path="/auth/register" element={<RegisterForm />} />
+            
+            {/* Rutas protegidas */}
+            <Route 
+              path="/dashboard" 
+              element={
+                <ProtectedRoute>
+                  <Dashboard />
+                </ProtectedRoute>
+              } 
+            />
+            
+            {/* Redirección por defecto */}
+            <Route path="/" element={<Navigate to="/dashboard" replace />} />
+            
+            {/* Ruta catch-all */}
+            <Route path="*" element={<Navigate to="/dashboard" replace />} />
+          </Routes>
+        </Router>
+      </ConfigProvider>
+    </AuthProvider>
   );
 }
 

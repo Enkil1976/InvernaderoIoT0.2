@@ -273,10 +273,22 @@ export class ApiService {
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), 5000); // 5 second timeout
       
+      // Incluir token de autenticación si está disponible
+      const token = localStorage.getItem('auth_token');
+      const headers: Record<string, string> = {
+        'Accept': 'application/json',
+        'Content-Type': 'application/json'
+      };
+      
+      if (token) {
+        headers['Authorization'] = `Bearer ${token}`;
+      }
+      
       const response = await fetch(`${currentConfig.baseUrl}/api/health`, {
         method: 'HEAD',
         signal: controller.signal,
-        mode: 'cors'
+        mode: 'cors',
+        headers
       });
       
       clearTimeout(timeoutId);
@@ -296,13 +308,22 @@ export class ApiService {
       const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 second timeout
       
       const url = `${currentConfig.baseUrl}${endpoint}/${table}`;
+      
+      // Incluir token de autenticación si está disponible
+      const token = localStorage.getItem('auth_token');
+      const headers: Record<string, string> = {
+        'Accept': 'application/json',
+        'Content-Type': 'application/json'
+      };
+      
+      if (token) {
+        headers['Authorization'] = `Bearer ${token}`;
+      }
+      
       const response = await fetch(url, {
         signal: controller.signal,
         mode: 'cors',
-        headers: {
-          'Accept': 'application/json',
-          'Content-Type': 'application/json'
-        }
+        headers
       });
       
       clearTimeout(timeoutId);
@@ -377,7 +398,6 @@ export class ApiService {
       return mockData?.data || [];
     }
   }
-
 
   static async getHistoryData(table: string) {
     console.log(`[getHistoryData] Fetching history data for table: ${table}`);
