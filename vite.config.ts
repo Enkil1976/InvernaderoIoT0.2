@@ -9,7 +9,8 @@ export default defineConfig({
   },
   build: {
     rollupOptions: {
-      external: ['react-router-dom'],
+      // No necesitamos marcar react-router-dom como externo
+      // Vite lo manejará automáticamente
     },
   },
 });
