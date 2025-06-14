@@ -1,29 +1,26 @@
-import { Outlet } from 'react-router-dom';
+import { Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider } from './contexts/AuthContext';
 import { ConfigProvider } from './contexts/ConfigContext';
-import { Routes, Route, Navigate } from 'react-router-dom';
 import { ProtectedRoute } from './components/auth/ProtectedRoute';
 import { LoginForm } from './components/auth/LoginForm';
 import { RegisterForm } from './components/auth/RegisterForm';
 import { Dashboard } from './components/Dashboard';
 
 // Componente de diseño que envuelve todas las rutas
-const Layout = () => {
+const Layout = ({ children }: { children: React.ReactNode }) => {
   return (
     <AuthProvider>
       <ConfigProvider>
-        <Outlet />
+        {children}
       </ConfigProvider>
     </AuthProvider>
   );
 };
 
-// Componente de rutas
-const AppRoutes = () => {
+function App() {
   return (
-    <Routes>
-      {/* Ruta raíz que usa el diseño */}
-      <Route element={<Layout />}>
+    <Layout>
+      <Routes>
         {/* Rutas de autenticación */}
         <Route path="/auth/login" element={<LoginForm />} />
         <Route path="/auth/register" element={<RegisterForm />} />
@@ -43,14 +40,9 @@ const AppRoutes = () => {
         
         {/* Ruta catch-all */}
         <Route path="*" element={<Navigate to="/dashboard" replace />} />
-      </Route>
-    </Routes>
+      </Routes>
+    </Layout>
   );
-};
-
-// Componente principal de la aplicación
-function App() {
-  return <AppRoutes />;
 }
 
 export default App;

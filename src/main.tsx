@@ -4,7 +4,7 @@ import { createBrowserRouter, RouterProvider } from 'react-router-dom';
 import App from './App.tsx';
 import './index.css';
 
-// Configuración del enrutador
+// Configuración básica del enrutador
 const router = createBrowserRouter([
   {
     path: '/*',
